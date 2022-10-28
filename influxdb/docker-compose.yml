@@ -1,0 +1,97 @@
+##############################################################################
+#
+# Name: docker-compose.yml
+#
+# Function:
+# 	Configure the docker-iot-dashboard collection of docker containers.
+#
+# Copyright:
+#	This file copyright (c) 2017-2021 by
+#
+#		MCCI Corporation
+#		3520 Krums Corners Road
+#		Ithaca, NY 14850
+#
+#	Distributed under the terms of the license file shipped with this
+#	collection.
+#
+# Authors:
+#	Terry Moore, MCCI Corporation
+#	Murugan Chandrasekar, MCCI Corporation
+#	Based on work by Johan Stocking, The Things Network
+#
+##############################################################################
+
+
+
+version: '3.8'
+services:
+  
+  
+
+  kapacitor:
+    image: kapacitor:latest
+    environment:
+      - KAPACITOR_INFLUXDB_0_URLS_0=http://influxdb:8086
+      - KAPACITOR_HOSTNAME=kapacitor
+      - KAPACITOR_LOGGING_LEVEL=INFO
+      - KAPACITOR_REPORTING_ENABLED=false
+    volumes:
+      - "${IOT_DASHBOARD_DATA}kapacitor:/var/lib/kapacitor"
+    ports:
+      - 9092:9092
+    depends_on:
+      - influxdb
+    restart: unless-stopped
+
+ 
+  influxdb:
+    restart: unless-stopped
+    build:
+      context: ./influxdb
+      dockerfile: Dockerfile
+      args:
+        distrib_id: "${IOT_DASHBOARD_OS_DISTRIB_ID:-ubuntu}"
+        distrib_codename: "${IOT_DASHBOARD_OS_DISTRIB_CODENAME:-focal}"
+        hostname: "${IOT_DASHBOARD_INFLUXDB_MAIL_HOST_NAME:-influxdb}"
+        domain: "${IOT_DASHBOARD_MAIL_DOMAIN:-example.com}"
+    ports:
+      - 8086:8086         
+    hostname: "${IOT_DASHBOARD_INFLUXDB_MAIL_HOST_NAME:-influxdb}"
+    expose:
+      - "8086"
+    volumes:
+      - "${IOT_DASHBOARD_DATA}influxdb:/var/lib/influxdb"
+    environment:
+      INFLUXDB_INIT_PWD: "${IOT_DASHBOARD_INFLUXDB_ADMIN_PASSWORD:-admin}"
+      PRE_CREATE_DB: "${IOT_DASHBOARD_INFLUXDB_INITIAL_DATABASE_NAME:-demo}"
+      INFLUXDB_BIND_ADDRESS: "influxdb:8088"
+      INFLUXDB_BACKUP_MAIL: "${IOT_DASHBOARD_INFLUXDB_BACKUP_EMAIL:-}"
+
+  telegraf:
+    image: "telegraf:latest"
+    hostname: "telegraf"
+    volumes:
+        - "${IOT_DASHBOARD_DATA/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf"
+
+  chronograf:
+    image: chronograf:latest
+    ports:
+      - '8888:8888'
+    volumes:
+      - "${IOT_DASHBOARD_DATA}chronograf-storage:/var/lib/chronograf"
+    depends_on:
+      - influxdb
+    environment:
+      - INFLUXDB_URL: "http://influxdb:8086"
+      - INFLUXDB_USERNAME: "admin"
+      - INFLUXDB_PASSWORD: "${IOT_DASHBOARD_INFLUXDB_ADMIN_PASSWORD:-admin}" 
+      - BASE_PATH: "/chronograf"
+      - KAPACITOR_URL: "http://kapacitor:9092"
+    restart: unless-stopped
+  
+  
+  
+  
+ 
+### end of file ###
