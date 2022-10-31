@@ -31,7 +31,7 @@ Puedes desplegarlo en un droplet Docker de [Digital Ocean](https://www.digitaloc
 
 ## Introduccion
 
-Este [`SETUP.md`](./SETUP.md) explica la instalación del Application Server y su configuración. [Docker](https://docs.docker.com/) y [Docker Compose](https://docs.docker.com/compose/) se utilizan para facilitar la instalación y configuración de este setup.
+Este [`SETUP.md`](./SETUP.md) explica la instalación del Stack IoT y su configuración. [Docker](https://docs.docker.com/) y [Docker Compose](https://docs.docker.com/compose/) se utilizan para facilitar la instalación y configuración de este setup.
 
 Este dashboard utiliza [docker-compose](https://docs.docker.com/compose/overview/) para configurar un grupo de contenedores [docker containers](https://www.docker.com) primarios
 
