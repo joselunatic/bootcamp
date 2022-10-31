@@ -83,95 +83,89 @@ Esto se puede visualizar en la figura inferior.
 
 ![Connection Architecture using SSH](assets/Connection-architecture.png)
 
-## Assumptions
+## Premisas
 
-- The host system must have docker-compose version 1.9 or later (for which <https://github.com/docker-compose> -- be aware that apt-get normally doesn't grab this; if configured at all, it frequently gets an out-of-date version).
+- El sistema host debe contar con docker-compose version 1.9 o superior
 
-- The environment variable `IOT_DASHBOARD_DATA`, if set, points to the common directory for the data. If not set, docker-compose will quit at start-up. (This is by design!)
+- La variable de entorno IOT_DASHBOARD_DATA`, si está establecida, debe apuntar al directorio común. Si no está asignada, docker-compose se detendrá al arrancar. (Esto es por diseño)
 
-  - `${IOT_DASHBOARD_DATA}node-red` will have the local Node-RED data.
+  - `${IOT_DASHBOARD_DATA}node-red` almacenará los datos locales de Node-RED.
 
-  - `${IOT_DASHBOARD_DATA}influxdb`  will have the local InfluxDB data (this should be backed-up)
+  - `${IOT_DASHBOARD_DATA}influxdb`  almacenará los datos locales de InfluxDB (deberías hacer backups de esta carpeta)
 
-  - `${IOT_DASHBOARD_DATA}grafana` will have all the dashboards
+  - `${IOT_DASHBOARD_DATA}grafana` almacenará los dashboards
+  
+  - `${IOT_DASHBOARD_DATA}mqtt/credentials` almacenará las credenciales de usuario
+  
+  - `${IOT_DASHBOARD_DATA}chirpstack` almacenará el network, application y gateway servers de chirpstack
+  
+  - `${IOT_DASHBOARD_DATA}postgres` almacenará la base de datos postgres utilizada por Chirpstack
 
-  - `${IOT_DASHBOARD_DATA}docker-nginx` will have `.htpasswd` credentials folder `authdata` and Let's Encrypt certs folder `letsencrypt`
 
-  - `${IOT_DASHBOARD_DATA}mqtt/credentials` will have the user credentials
 
-## Composition and External Ports
+## Composición y Puertos Externos
 
-Within the containers, the individual programs use their usual ports, but these are isolated from the outside world, except as specified by `docker-compose.yml` file.
+En los contenedores, cada programa individual utiliza sus puertos habituales, pero éstos están aislados del mundo exterior excepto lo que hayamos declarado en el archivo `docker-compose.yml`.
 
-In `docker-compose.yml`, the following ports on the docker host are connected to the individual programs.
+En el `docker-compose.yml`, vamos a conectar los siguientes puertos del host docker a cada programa individual
 
-- Nginx runs on 80/tcp and 443/tcp. (All connections to port 80 are redirected to 443 using SSL).
+- Grafana utiliza el 3000/tcp.
 
-*The below ports are exposed only for the inter-container communication; These ports can't be accessed by host system.*
+- Influxdb utiliza el 8086/tcp.
 
-- Grafana runs on 3000/tcp.
+- Node-red utiliza el 1880/tcp.
 
-- Influxdb runs on 8086/tcp.
+- Chronograf utiliza el 8888/tcp.
 
-- Node-red runs on 1880/tcp.
+- Chirpstack utiliza el 8080/tcp.
 
-- Postfix runs on 25/tcp.
+## Archivos de datos
 
-Remember, if the server is running on a cloud platform like Microsoft Azure or AWS, one needs to check the firewall and confirm that the ports are open to the outside world.
+Al diseñar esta colección de servicios, teniamos dos opciones para almacenar los archivos de datos:
 
-## Data Files
+- podemos mantenerlos en el interior de los contenedores docker, o
 
-When designing this collection of services, there were two choices to store the
-data files:
+- podemos mantenerlos en ubicaciones del sistema host.
 
-- we could keep them inside the docker containers, or
+La ventaja de la primera opción es que todo se resetea cuando reconstruimos las imagenes docker. La desventaja es que existe la posibilidad de perder todos los datos cuando se reconstruye. Por otro lado, tenemos un nivel adicional de indirección cuando guardamos datos en el host, ya que los archivos residen en unas rutas en el host y en otras en los contenedores docker.
 
-- we could keep them in locations on the host system.
+Como los datos IoT son normalmente persistentes, hemos decidido que se requería el nivel extra de indirección. Para ayudarte a encontrar las cosas, consulta la siguiente tabla. Los archivos de datos se almacenan en esta ubicación por defecto.
 
-The advantage of the former is that everything is reset when the docker images are rebuilt. The disadvantage of the former is that there is a possibility to lose all the data when it’s rebuilt. On the other hand, there's another level of indirection when keeping things on the host, as the files reside in different locations on the host and in the docker containers.
-
-Because IoT data is generally persistent, we decided that the the extra level of indirection was required. To help find things, consult the following table. Data files are kept in the following locations by default.
-
-| **Component** | **Data file location on host**| **Location in container**  |
+| **Componente** | **ruta de los archivos en el host**| **ruta en el contenedor**  |
 |---------------|-----------|----------------------------|
 | Node-RED      | `${IOT_DASHBOARD_DATA}node-red`| /data
 | InfluxDB      |  `${IOT_DASHBOARD_DATA}influxdb` | /var/lib/influxdb
 | Grafana       | `${IOT_DASHBOARD_DATA}grafana` | /var/lib/grafana|
 | Mqtt | `${IOT_DASHBOARD_DATA}mqtt/credentials` | /etc/mosquitto/credentials
-| Nginx | `${IOT_DASHBOARD_DATA}docker-nginx/authdata`| /etc/nginx/authdata
-| Let's Encrypt certificates |`${IOT_DASHBOARD_DATA}docker-nginx/letsencrypt`|/etc/letsencrypt
+| Chirpstack | `${IOT_DASHBOARD_DATA}chirpstack/configuration`| /etc/chirpstack-*
 
-As shown, one can easily change locations on the **host** (e.g. for testing). This can be done by setting the environment variable `IOT_DASHBOARD_DATA` to the **absolute path** (with trailing slash) to the containing directory prior to
-calling `docker-compose up`. The above paths are appended to the value of `IOT_DASHBOARD_DATA`. Directories are created as needed.
+Tal como se muestra, podemos cambiar fácilmente las ubicaciones en el **host** (p.ej, para pruebas). Podemos hacer esto asignando la variable IOT_DASHBOARD_DATA` a la **ruta absoluta** (con una barra diagonal) del directorio comñun qe queramos utilizar antes de llamar a "docker-compose up". Las rutas de la tabla superior se añaden al valor de la variable `IOT_DASHBOARD_DATA`. Los directorios se crean según sean necesarios.
 
-Normally, this is done by an appropriate setting in the `.env` file.
+Normalmente realizamos esto declarando la variable apropiada en el archivo `.env`.
 
-Consider the following example:
-
+Si consideramos el siguiente ejemplo:
 ```console
 $ grep IOT_DASHBOARD_DATA .env
 IOT_DASHBOARD_DATA=/dashboard-data/
 $ docker-compose up –d
 ```
+En este caso, los archivos de datos se crearán en las siguientes ubicaciones:
 
-In this case, the data files are created in the following locations:
+Tabla de ejemplos de ubicacion de datos
 
-Table Data Location Examples
-
-| **Component** | **Data file location**            |
+| **Componente** | **Ubicación del archivo de datos**            |
 |---------------|-----------------------------------|
 | Node-RED      | /dashboard-data/node-red          |
 | InfluxDB      | /dashboard-data/influxdb          |
 | Grafana       | /dashboard-data/grafana           |
 | Mqtt          | /dashboard-data/ mqtt/credentials |
-| Nginx         | /dashboard-data/docker-nginx/authdata|
-| Certificates  | /dashboard-data/docker-nginx/letsencrypt
+| Chirpstack    | /dashboard-data/chirpstack        |
 
-## Reuse and removal of data files
+## Reutilización y borrado de los archivos de datos
 
-Since data files on the host are not removed between runs, as long as the files are not removed between runs, the data will be preserved.
+Como los archivos de datos no se eliminan al reiniciar los contenedores, mientras los archivos no se modifiquen entre ejecuciónes, se van a preservar los datos.
 
-Sometimes this is inconvenient, and it is necessary to remove some or all of the data. For a variety of reasons, the data files and directories are created owned by root, so the `sudo` command must be used to remove the data files. Here's an example of how to do it:
+Algunas veces esto puede ser inconveniente y es necesario eliminar parte o la totalidad de los datos. Por varias razones, los archivos y directorios son creados por el usuario root, así que deberás utilizar `sudo` para eliminar los archivos. Aquí tienes un ejemplo de como hacerlo:
 
 ```bash
 source .env
@@ -181,25 +175,27 @@ sudo rm -rf ${IOT_DASHBOARD_DATA}Grafana
 sudo rm –rf ${IOT_DASHBOARD_DATA}mqtt/credentials
 ```
 
-## Node-RED and Grafana Examples
+## Ejemplos de Node-RED y Grafana
 
-This version requires that you set up Node-RED, the Influxdb database and the Grafana dashboards manually, but we hope to add a reasonable set of initial files in a future release.
+Esta versión requiere que configures Node-RED, MQTT, Chirpstack, InfluxDB y Grafana manualmente.
 
-### Connecting to InfluxDB from Node-RED and Grafana
+### Conectar a InfluxDB desde Node-RED y Grafana
 
-There is one point that is somewhat confusing about the connections from Node-RED and Grafana to InfluxDB. Even though InfluxDB is running on the same host, it is logically running on its own virtual machine (created by docker). Because of this, Node-RED and Grafana cannot use **`local host`** when connecting to InfluxDB. A special name is provided by docker: `influxdb`. Note that there's no DNS suffix. If `influxdb` is not used, Node-RED and Grafana will not be able to connect.
+Este punto a veces puede confundir para configurar las conexiones desde Node-RED y Grafana a InfluxDB. Aunque InfluxDB está ejecutandose en el mismo host, lógicamente esta ejecutándose en su propio espacio de nombres (creado por docker). Por esto, Node-RED y Grafana no pueden configurarse para que utilicen **`local host`** como dirección de conexión a InfluxDB. Al correr dentro de la misma red, docker proporciona el nombre del contenedor `influxdb` (sin sufijo DNS). 
 
-### Logging in to Grafana
 
-On the login screen, the initial user name is "`admin`". The initial password is given by the value of the variable `IOT_DASHBOARD_GRAFANA_ADMIN_PASSWORD` in `.env`. Note that if you change the password in `.env` after the first time you launch the grafana container, the admin password does not change. If you somehow lose the previous value of the admin password, and you don't have another admin login, it's very hard to recover; easiest is to remove `grafana.db` and start over.
+### Iniciando sesión en Grafana
 
-### Data source settings in Grafana
+En la pantalla de login, el usuario inicial es "`admin`". El password inicial se puede establecer pasando la siguiente variable de entorno
+`IOT_DASHBOARD_GRAFANA_ADMIN_PASSWORD` en `.env` o en el propio docker-compose.yml. Ten en cuenta que si cambias el password en el archivo  `.env` después del primer arranque del contenedor, no cambiarás el password del admin. Si pierdes el password del admin y no tienes otro usuario con derechos de admin, es muy dificil recuperarlas, Tal vez sea más sencillo eliminar el archivo `grafana.db` y empezar de nuevo.
 
-- Set the URL (under HTTP Settings) to <http://influxdb:8086>.
+### Ajustes del Data source en Grafana
 
-- Select the database.
+- Ajusta la URL (en HTTP Settings) a <http://influxdb:8086>.
 
-- Leave the username and password blank.
+- Elige la base de datos.
+
+- Introduce el usuario y password.
 
 - Click "Save & Test".
 
