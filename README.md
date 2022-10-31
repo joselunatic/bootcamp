@@ -43,7 +43,7 @@ Este dashboard utiliza [docker-compose](https://docs.docker.com/compose/overvie
 
 4. Una instancia de [Mqtt](https://mosquitto.org/), que proporciona un método ligero para transportar mensajes utilizando un modelo de publicación/suscripción.
 
-5. Una instancia de [Chirpstack] (https://chirpstack.io), que proporciona soporte para la transmisión de datos y gestión de dispositivos LoRaWAN
+5. Una instancia de [Chirpstack](https://chirpstack.io), que proporciona soporte para la transmisión de datos y gestión de dispositivos LoRaWAN
 
 
 
