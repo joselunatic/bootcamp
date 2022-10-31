@@ -73,7 +73,7 @@ ESTE DESPLIEGUE SE HA REALIZADO CON FINES PURAMENTE EDUCATIVOS. ES TOTALMENTE IN
 | Node-RED    | <http://localhost:1880> |  |
 | InfluxDB API queries | <http://localhost:8086/> |  |
 | Grafana    | <http://localhost:3000> |  |
-| Mqtt       | <http://localhost:1883>| Se necesita un cliente MQTT. Puedes probar utilizando [Mqtt web portal](http://tools.emqx.io/) |
+| Mqtt       | <http://localhost:1883>| Se necesita un cliente MQTT. Puedes probar utilizando [Mqtt Explorer](http://mqtt-explorer.com/)|
 | Chirpstack | <http://localhost:8080> |  | 
 | Chronograf | <http://localhost:8888> |  |
 
